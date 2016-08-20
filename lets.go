@@ -516,31 +516,19 @@ func (m *Manager) GetCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certifi
 	return m.Cert(host)
 }
 
-// CertFromCache returns a certificate for the given host name, only if it
-// exists in the cache. Unlike Cert(), it will not create a missing certificate.
-func (m *Manager) CertFromCache(host string) (*tls.Certificate, bool) {
+// CertExists returns whether a certificate exists in the cache
+func (m *Manager) CertExists(host string) bool {
 	host = strings.ToLower(host)
 	if debug {
-		log.Printf("Cert %s", host)
+		log.Printf("CertExists %s", host)
 	}
 
 	m.init()
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	entry, ok := m.certCache[host]
-	if !ok {
-		return nil, false
-	}
-
-	entry.mu.Lock()
-	defer entry.mu.Unlock()
-	entry.init()
-	if entry.err != nil {
-		return nil, false
-	}
-
-	return entry.cert, true
+	_, ok := m.certCache[host]
+	return ok
 }
 
 // Cert returns the certificate for the given host name, obtaining a new one if necessary.
