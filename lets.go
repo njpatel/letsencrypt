@@ -442,9 +442,6 @@ func (m *Manager) Marshal() string {
 // Unmarshal restores the state encoded by a previous call to Marshal
 // (perhaps on a different Manager in a different program).
 func (m *Manager) Unmarshal(enc string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
 	m.init()
 	var st state
 	if err := json.Unmarshal([]byte(enc), &st); err != nil {
