@@ -320,6 +320,7 @@ func (m *Manager) updated() {
 	}
 }
 
+// CacheFile sets the name of the file to use for persistent storage
 func (m *Manager) CacheFile(name string) error {
 	f, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
@@ -515,6 +516,33 @@ func (m *Manager) GetCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certifi
 	return m.Cert(host)
 }
 
+// CertFromCache returns a certificate for the given host name, only if it
+// exists in the cache. Unlike Cert(), it will not create a missing certificate.
+func (m *Manager) CertFromCache(host string) (*tls.Certificate, bool) {
+	host = strings.ToLower(host)
+	if debug {
+		log.Printf("Cert %s", host)
+	}
+
+	m.init()
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	entry, ok := m.certCache[host]
+	if !ok {
+		return nil, false
+	}
+
+	entry.mu.Lock()
+	defer entry.mu.Unlock()
+	entry.init()
+	if entry.err != nil {
+		return nil, false
+	}
+
+	return entry.cert, true
+}
+
 // Cert returns the certificate for the given host name, obtaining a new one if necessary.
 //
 // As noted in the documentation for Manager and for the GetCertificate method,
@@ -664,7 +692,6 @@ func (m *Manager) verify(host string) (cert *tls.Certificate, refreshTime time.T
 		if debug {
 			log.Printf("ObtainCertificate %v toTLS failure: %v", host, err)
 		}
-		err = err
 		return
 	}
 	if refreshTime, err = certRefreshTime(cert); err != nil {
